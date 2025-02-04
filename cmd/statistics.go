@@ -1,56 +1,42 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
-	"sort"
 
 	"github.com/danielsrojo/obser/pkg/obsidian"
+	"github.com/spf13/cobra"
 )
 
-func GetYearlyStatistics(year int) []obsidian.Property {
-	var properties []obsidian.Property
-	for month := 1; month <= 12; month++ {
-		// TODO: implement
-		// GetMonthlyStatistics(year, month)
-	}
+var (
+	year  int
+	month int
 
-	return properties
+	statisticsCmd = &cobra.Command{
+		Use:   "statistics",
+		Short: "Show journal properties based statistics",
+		Long:  "Show statisctics based on journal notes properties values",
+		Run: func(cmd *cobra.Command, args []string) {
+			showStatistics(year, month)
+		},
+	}
+)
+
+func init() {
+	statisticsCmd.Flags().IntVarP(&year, "year", "y", 0, "Year for statistics")
+	statisticsCmd.Flags().IntVarP(&month, "month", "m", 0, "Month for statistics (1-12)")
+
+	RootCmd.AddCommand(statisticsCmd)
 }
 
-func GetMonthlyStatistics(year, month int) []obsidian.Property {
-	monthCount, err := obsidian.AggregateMonthlyProperties(year, month)
+func showStatistics(year, month int) {
+
+	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if len(monthCount) == 0 {
-		return nil
+	for _, p := range statistics {
+		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
 	}
-
-	var propertyNames []string
-	for i := range monthCount {
-		propertyNames = append(propertyNames, i)
-	}
-	sort.Strings(propertyNames)
-
-	// fmt.Printf("%s\n---\n", month)
-	var properties []obsidian.Property
-	for _, name := range propertyNames {
-		p := monthCount[name]
-		value := int(p.Value)
-		if p.Unit == "seconds" && value >= 200 {
-			value = value / 60
-			p.Unit = "minutes"
-		}
-		if p.Unit == "minutes" && value >= 100 {
-			value = value / 60
-			p.Unit = "hours"
-		}
-	}
-
-	return properties
-}
-
-func formatStatistics() {
-	// fmt.Printf("%d\n\n", year)
 }
