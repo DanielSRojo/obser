@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/danielsrojo/obser/pkg/obsidian"
 	"github.com/spf13/cobra"
@@ -30,13 +31,23 @@ func init() {
 }
 
 func showStatistics(year, month int) {
-
-	statistics, err := obsidian.GetStatistics(year, month)
+	statistics, err := obsidian.GetStatistics(&year, &month)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	var header string
+	if month > 0 {
+		header = fmt.Sprintf("\n### %s %d ###", time.Month(month), year)
+	} else {
+		header = fmt.Sprintf("\n### %d ###", year)
+	}
+	fmt.Println(header)
+
 	for _, p := range statistics {
+		if p.Value == 0 {
+			continue
+		}
 		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
 	}
 }

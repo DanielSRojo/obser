@@ -6,15 +6,8 @@ import (
 	"time"
 )
 
-type Statistics struct {
-	Name    string
-	Content string
-	Value   int
-	Unit    string
-}
-
-func GetYearlyStatistics(year int) []Statistics {
-	var statistics []Statistics
+func GetYearlyStatistics(year int) []Property {
+	var statistics []Property
 	for month := 1; month <= 12; month++ {
 		// TODO: implement
 		// GetMonthlyStatistics(year, month)
@@ -23,7 +16,7 @@ func GetYearlyStatistics(year int) []Statistics {
 	return statistics
 }
 
-func GetMonthlyStatistics(year, month int) []Statistics {
+func GetMonthlyStatistics(year, month int) []Property {
 	monthCount, err := AggregateMonthlyProperties(year, month)
 	if err != nil {
 		log.Fatal(err)
@@ -39,7 +32,7 @@ func GetMonthlyStatistics(year, month int) []Statistics {
 	}
 	sort.Strings(propertyNames)
 
-	var statistics []Statistics
+	var statistics []Property
 	for _, name := range propertyNames {
 		p := monthCount[name]
 		value := int(p.Value)
@@ -51,29 +44,23 @@ func GetMonthlyStatistics(year, month int) []Statistics {
 			value = value / 60
 			p.Unit = "hours"
 		}
-		s := &Statistics{
-			Name:    p.Name,
-			Content: p.Content,
-			Value:   p.Value,
-			Unit:    p.Unit,
-		}
-		statistics = append(statistics, *s)
+		statistics = append(statistics, p)
 	}
 
 	return statistics
 }
 
-func GetStatistics(year, month int) ([]Statistics, error) {
+func GetStatistics(year, month *int) ([]Property, error) {
 	now := time.Now()
-	if year > 0 && month == 0 {
-		return GetYearlyStatistics(year), nil
+	if *year > 0 && *month == 0 {
+		return GetYearlyStatistics(*year), nil
 	}
-	if year == 0 && month > 0 {
-		year = now.Year()
+	if *year == 0 && *month > 0 {
+		*year = now.Year()
 	}
-	if year == 0 && month == 0 {
-		year = now.Year()
-		month = int(now.Month())
+	if *year == 0 && *month == 0 {
+		*year = now.Year()
+		*month = int(now.Month())
 	}
-	return GetMonthlyStatistics(year, month), nil
+	return GetMonthlyStatistics(*year, *month), nil
 }

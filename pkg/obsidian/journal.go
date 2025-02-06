@@ -2,6 +2,7 @@ package obsidian
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -41,7 +42,9 @@ func GetJournalEntries() ([]string, error) {
 	return entries, nil
 }
 
+// AggregateMonthlyProperties aggregates numeric properties for given month
 func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
+	//TODO: do not take into consideration non countable properties (e.g. type)
 	journalFiles, err := os.ReadDir(journalDir)
 	if err != nil {
 		log.Fatal(err)
@@ -61,7 +64,6 @@ func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 		}
 		err = note.LoadProperties()
 		if err != nil || len(note.Properties) < 2 {
-			fmt.Println(err)
 			continue
 		}
 
@@ -132,11 +134,10 @@ func AggregateProperty(propertyName string) ([]int, error) {
 }
 
 func GetPropertiesNames() ([]string, error) {
-	journalFiles, err := os.ReadDir(journalDir)
+	journalFiles, err := GetJournalFiles()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-
 	var propertyList []string
 	seen := make(map[string]bool)
 	for _, journalFile := range journalFiles {
@@ -166,4 +167,29 @@ func GetPropertiesNames() ([]string, error) {
 func contains(slice []string, target string) bool {
 	index := sort.SearchStrings(slice, target)
 	return index < len(slice) && slice[index] == target
+}
+
+func GetJournalFiles() ([]fs.DirEntry, error) {
+	files, err := os.ReadDir(journalDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var journalFiles []fs.DirEntry
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		note := &Note{
+			Directory: journalDir,
+			Title:     f.Name(),
+		}
+		if !note.IsJournal() {
+			continue
+		}
+
+		journalFiles = append(journalFiles, f)
+	}
+
+	return journalFiles, nil
 }

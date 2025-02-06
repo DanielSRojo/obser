@@ -7,15 +7,27 @@ import (
 	"strings"
 )
 
+type PropertyType int
+
+const (
+	Text PropertyType = iota
+	Numeric
+	NumricWithUnit
+)
+
 type Property struct {
 	Name    string
 	Content string
 	Value   int
 	Unit    string
+	Text    string
+	Number  int
+	Type    PropertyType
 }
 
 func GetProperties(text string) ([]Property, error) {
 	text, _ = GetFrontmatter(text)
+	
 
 	lines := strings.Split(text, "\n")
 	properties := make([]Property, len(lines))
@@ -29,7 +41,7 @@ func GetProperties(text string) ([]Property, error) {
 		line = strings.TrimSpace(line)
 		properties[i], err = ParseProperty(line)
 		if err != nil {
-			return properties, err
+			return nil, err
 		}
 	}
 

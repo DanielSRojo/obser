@@ -12,6 +12,7 @@ type Note struct {
 	Directory  string
 	Properties []Property
 	Title      string
+	Type       string
 }
 
 func (n *Note) LoadProperties() error {
