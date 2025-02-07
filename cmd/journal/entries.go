@@ -1,4 +1,4 @@
-package list
+package journal
 
 import (
 	"fmt"
@@ -8,13 +8,13 @@ import (
 )
 
 func init() {
-	ListCmd.AddCommand(journalCmd)
+	JournalCmd.AddCommand(entriesCmd)
 }
 
-var journalCmd = &cobra.Command{
-	Use:   "journal",
-	Short: "journal",
-	Long:  "journal",
+var entriesCmd = &cobra.Command{
+	Use:   "entries",
+	Short: "entries",
+	Long:  "entries",
 	Run: func(cmd *cobra.Command, args []string) {
 		listJournalEntries()
 	},

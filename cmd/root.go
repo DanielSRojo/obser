@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/danielsrojo/obser/cmd/journal"
 	"github.com/danielsrojo/obser/cmd/list"
 	"github.com/spf13/cobra"
 )
@@ -33,4 +34,5 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.obser.toml)")
 
 	RootCmd.AddCommand(list.ListCmd)
+	RootCmd.AddCommand(journal.JournalCmd)
 }

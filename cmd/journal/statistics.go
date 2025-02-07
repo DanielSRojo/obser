@@ -1,4 +1,4 @@
-package cmd
+package journal
 
 import (
 	"fmt"
@@ -26,28 +26,53 @@ var (
 func init() {
 	statisticsCmd.Flags().IntVarP(&year, "year", "y", 0, "Year for statistics")
 	statisticsCmd.Flags().IntVarP(&month, "month", "m", 0, "Month for statistics (1-12)")
-
-	RootCmd.AddCommand(statisticsCmd)
+	JournalCmd.AddCommand(statisticsCmd)
 }
 
 func showStatistics(year, month int) {
-	statistics, err := obsidian.GetStatistics(&year, &month)
+	setDefaultDateValues(&year, &month)
+
+	if month != 0 {
+		showMonthStatistics(year, month)
+		return
+	}
+
+	showYearStatistics(year)
+}
+
+func showMonthStatistics(year, month int) {
+	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var header string
-	if month > 0 {
-		header = fmt.Sprintf("\n### %s %d ###", time.Month(month), year)
-	} else {
-		header = fmt.Sprintf("\n### %d ###", year)
+	if len(statistics) == 0 {
+		return
 	}
-	fmt.Println(header)
 
+	fmt.Printf("\n### %s %d ###\n", time.Month(month), year)
 	for _, p := range statistics {
 		if p.Value == 0 {
 			continue
 		}
 		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
+	}
+}
+
+func showYearStatistics(year int) {
+	for m := 1; m <= 12; m++ {
+		showMonthStatistics(year, m)
+	}
+	//TODO: Add a properties aggregate display
+}
+
+func setDefaultDateValues(year, month *int) {
+	if *year != 0 {
+		return
+	}
+	now := time.Now()
+	*year = now.Year()
+	if *month == 0 {
+		*month = int(now.Month())
 	}
 }
