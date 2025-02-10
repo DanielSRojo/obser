@@ -32,7 +32,7 @@ func (n *Note) LoadProperties() error {
 
 func GetNotesNames() ([]string, error) {
 	var names []string
-	files, err := os.ReadDir(journalDir)
+	files, err := os.ReadDir(vaultDir)
 	if err != nil {
 		return nil, err
 	}

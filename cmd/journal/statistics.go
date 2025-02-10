@@ -63,7 +63,7 @@ func showYearStatistics(year int) {
 	for m := 1; m <= 12; m++ {
 		showMonthStatistics(year, m)
 	}
-	//TODO: Add a properties aggregate display
+	// TODO: Add a properties aggregate display
 }
 
 func setDefaultDateValues(year, month *int) {

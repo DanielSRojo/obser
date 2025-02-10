@@ -10,19 +10,19 @@ import (
 	"strings"
 )
 
-var journalDir string
+var vaultDir string
 
 func init() {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
 		panic("Unable to determine user home directory: " + err.Error())
 	}
-	journalDir = filepath.Join(userHome, ".obsidian")
+	vaultDir = filepath.Join(userHome, ".obsidian")
 }
 
 func GetJournalEntries() ([]string, error) {
 	var entries []string
-	files, err := os.ReadDir(journalDir)
+	files, err := os.ReadDir(vaultDir)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func GetJournalEntries() ([]string, error) {
 		if !file.IsDir() {
 			note := &Note{
 				Content:    "",
-				Directory:  journalDir,
+				Directory:  vaultDir,
 				Properties: []Property{},
 				Title:      file.Name(),
 			}
@@ -44,14 +44,13 @@ func GetJournalEntries() ([]string, error) {
 
 // AggregateMonthlyProperties aggregates numeric properties for given month
 func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
-	//TODO: do not take into consideration non countable properties (e.g. type)
-	journalFiles, err := os.ReadDir(journalDir)
+	journalFiles, err := os.ReadDir(vaultDir)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
 
-	monthSum := make(map[string]Property)
+	totals := make(map[string]Property)
 	for _, journalFile := range journalFiles {
 		prefix := fmt.Sprintf("%04d-%02d", year, month)
 		if !strings.HasPrefix(journalFile.Name(), prefix) {
@@ -60,44 +59,45 @@ func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 
 		note := &Note{
 			Title:     journalFile.Name(),
-			Directory: journalDir,
+			Directory: vaultDir,
 		}
 		err = note.LoadProperties()
-		if err != nil || len(note.Properties) < 2 {
+		if err != nil || len(note.Properties) < 1 {
 			continue
 		}
 
 		for _, property := range note.Properties {
 			var unit string
-			if monthSum[property.Name].Unit != "" {
-				unit = monthSum[property.Name].Unit
-			} else if monthSum[property.Name].Unit == "" && property.Unit != "" {
+			if totals[property.Name].Unit != "" {
+				unit = totals[property.Name].Unit
+			} else if totals[property.Name].Unit == "" && property.Unit != "" {
 				unit = property.Unit
 			}
-			monthSum[property.Name] = Property{
+			totals[property.Name] = Property{
 				Name:  property.Name,
-				Value: monthSum[property.Name].Value + property.Value,
+				Value: totals[property.Name].Value + property.Value,
 				Unit:  unit,
 			}
 		}
 	}
 
-	return monthSum, nil
+	return totals, nil
 }
 
 func AggregateProperty(propertyName string) ([]int, error) {
-	journalFiles, err := os.ReadDir(journalDir)
+	journalFiles, err := os.ReadDir(vaultDir)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
 
 	totalCount := make([]int, 12)
-	var propertyCount Property
+	var propertyTotal Property
 
 	for i := 0; i <= 11; i++ { // 12 months
-		var monthSum int
+		var totals int
 
+		// TODO: change this var to be an input
 		year := 2024
 		for _, journalFile := range journalFiles {
 			prefix := fmt.Sprintf("%04d-%02d", year, i+1)
@@ -106,7 +106,7 @@ func AggregateProperty(propertyName string) ([]int, error) {
 			}
 
 			note := Note{
-				Directory: journalDir,
+				Directory: vaultDir,
 				Title:     journalFile.Name(),
 			}
 			if err := note.LoadProperties(); err != nil {
@@ -118,16 +118,16 @@ func AggregateProperty(propertyName string) ([]int, error) {
 					continue
 				}
 
-				if p.Unit != propertyCount.Unit && propertyCount.Unit != "" {
-					fmt.Printf("warning: diferent units:\n%s\n%s\n", p.Unit, propertyCount.Unit)
+				if p.Unit != propertyTotal.Unit && propertyTotal.Unit != "" {
+					fmt.Printf("warning: diferent units:\n%s\n%s\n", p.Unit, propertyTotal.Unit)
 					fmt.Println(journalFile.Name())
 					continue
 				}
 
-				monthSum += p.Value
+				totals += p.Value
 			}
 		}
-		totalCount[i] = monthSum
+		totalCount[i] = totals
 	}
 
 	return totalCount, nil
@@ -142,7 +142,7 @@ func GetPropertiesNames() ([]string, error) {
 	seen := make(map[string]bool)
 	for _, journalFile := range journalFiles {
 		note := Note{
-			Directory: journalDir,
+			Directory: vaultDir,
 			Title:     journalFile.Name(),
 		}
 		if err := note.LoadProperties(); err != nil {
@@ -170,7 +170,7 @@ func contains(slice []string, target string) bool {
 }
 
 func GetJournalFiles() ([]fs.DirEntry, error) {
-	files, err := os.ReadDir(journalDir)
+	files, err := os.ReadDir(vaultDir)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func GetJournalFiles() ([]fs.DirEntry, error) {
 			continue
 		}
 		note := &Note{
-			Directory: journalDir,
+			Directory: vaultDir,
 			Title:     f.Name(),
 		}
 		if !note.IsJournal() {

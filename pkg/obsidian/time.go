@@ -26,7 +26,6 @@ func SumMinutes(timeStrings []string) (int, error) {
 }
 
 func ConvertDate(date string) (string, error) {
-
 	layout := "2006-01-02"
 	t, err := time.Parse(layout, date)
 	if err != nil {

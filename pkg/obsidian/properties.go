@@ -12,7 +12,6 @@ type PropertyType int
 const (
 	Text PropertyType = iota
 	Numeric
-	NumericWithUnit
 	Boolean
 )
 
@@ -21,8 +20,6 @@ type Property struct {
 	Content string
 	Value   int
 	Unit    string
-	Text    string
-	Number  int
 	Type    PropertyType
 }
 
@@ -56,7 +53,7 @@ func GetFrontmatter(text string) (string, error) {
 	if len(parts) > 1 {
 		text = parts[1]
 	} else {
-		return "", fmt.Errorf("error: YAML delimiters not found\n")
+		return "", fmt.Errorf("error: YAML delimiters not found")
 	}
 	lines := strings.Split(text, "\n")
 	lines = lines[1 : len(lines)-1]
@@ -82,13 +79,13 @@ func ParseProperty(s string) (Property, error) {
 		return Property{Name: name}, nil
 	}
 
+	var value int
 	content = strings.ToLower(content)
 	if content == "true" || content == "false" {
 		contentBool, err := strconv.ParseBool(content)
 		if err != nil {
 			return Property{}, fmt.Errorf("invalid format: %s", content)
 		}
-		var value int
 		if contentBool {
 			value = 1
 		}
@@ -104,7 +101,6 @@ func ParseProperty(s string) (Property, error) {
 	match := re.FindStringSubmatch(content)
 
 	parts = strings.Split(content, " ")
-	var value int
 	if match == nil {
 		value, err := strconv.Atoi(parts[0])
 		if err != nil {
@@ -156,6 +152,6 @@ func ParseProperty(s string) (Property, error) {
 		Content: content,
 		Value:   int(value),
 		Unit:    unit,
-		Type:    NumericWithUnit,
+		Type:    Numeric,
 	}, nil
 }
