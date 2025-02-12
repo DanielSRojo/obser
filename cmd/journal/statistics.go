@@ -63,7 +63,23 @@ func showYearStatistics(year int) {
 	for m := 1; m <= 12; m++ {
 		showMonthStatistics(year, m)
 	}
-	// TODO: Add a properties aggregate display
+
+	statistics, err := obsidian.GetStatistics(year, month)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(statistics) == 0 {
+		return
+	}
+
+	fmt.Printf("\n### %d ###\n", year)
+	for _, p := range statistics {
+		if p.Value == 0 {
+			continue
+		}
+		formatProperty(&p)
+		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
+	}
 }
 
 func setDefaultDateValues(year, month *int) {
@@ -74,5 +90,16 @@ func setDefaultDateValues(year, month *int) {
 	*year = now.Year()
 	if *month == 0 {
 		*month = int(now.Month())
+	}
+}
+
+func formatProperty(p *obsidian.Property) {
+	if p.Unit == "seconds" && p.Value >= 200 {
+		p.Value = p.Value / 60
+		p.Unit = "minutes"
+	}
+	if p.Unit == "minutes" && p.Value >= 100 {
+		p.Value = p.Value / 60
+		p.Unit = "hours"
 	}
 }

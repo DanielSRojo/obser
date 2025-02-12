@@ -124,7 +124,6 @@ func ParseProperty(s string) (Property, error) {
 		}, nil
 	}
 
-	var unit string
 	// TODO: write function for converting value to seconds
 	if len(match) == 3 {
 		var err error
@@ -144,14 +143,32 @@ func ParseProperty(s string) (Property, error) {
 			return Property{}, fmt.Errorf("unknown unit: %s", match[2])
 		}
 
-		unit = "seconds"
 	}
 
 	return Property{
 		Name:    name,
 		Content: content,
 		Value:   int(value),
-		Unit:    unit,
+		Unit:    "seconds",
 		Type:    Numeric,
 	}, nil
+}
+
+func NormalizeProperties(properties []Property) ([]Property, error) {
+	for i, p := range properties {
+		if p.Type != Numeric {
+			continue
+		}
+		if p.Unit == "" {
+			continue
+		}
+		re := regexp.MustCompile(`(\d+)\s*(hour|minute|second)s?`)
+		match := re.FindStringSubmatch(p.Unit)
+		if match == nil {
+			properties[i].Unit = ""
+			continue
+		}
+
+	}
+	return properties, nil
 }

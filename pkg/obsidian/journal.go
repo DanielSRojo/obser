@@ -67,16 +67,22 @@ func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 		}
 
 		for _, property := range note.Properties {
-			var unit string
 			if totals[property.Name].Unit != "" {
-				unit = totals[property.Name].Unit
-			} else if totals[property.Name].Unit == "" && property.Unit != "" {
-				unit = property.Unit
+				property.Unit = totals[property.Name].Unit
+			}
+			if property.Unit == "hours" {
+				property.Value = property.Value * 60
+				property.Unit = "minutes"
+			}
+			if property.Unit == "minutes" {
+				property.Value = property.Value * 60
+				property.Unit = "seconds"
 			}
 			totals[property.Name] = Property{
 				Name:  property.Name,
 				Value: totals[property.Name].Value + property.Value,
-				Unit:  unit,
+				Unit:  property.Unit,
+				Type:  Numeric,
 			}
 		}
 	}
@@ -119,8 +125,8 @@ func AggregateProperty(propertyName string) ([]int, error) {
 				}
 
 				if p.Unit != propertyTotal.Unit && propertyTotal.Unit != "" {
-					fmt.Printf("warning: diferent units:\n%s\n%s\n", p.Unit, propertyTotal.Unit)
-					fmt.Println(journalFile.Name())
+					// fmt.Printf("warning: diferent units:\n%s\n%s\n", p.Unit, propertyTotal.Unit)
+					// fmt.Println(journalFile.Name())
 					continue
 				}
 

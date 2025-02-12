@@ -7,22 +7,36 @@ import (
 )
 
 func GetYearlyStatistics(year int) []Property {
-	// yearlyStatistics := GetMonthlyStatistics(year, month)
-	// for month := 1; month <= 12; month++ {
-	// 	// TODO: implement
-	// 	for _, p := range yearlyStatistics {
-	// 		yearlyStatistics = SumProperties()
-	// 	}
-	// }
-	// return statistics
-
-	// var result []Property
-	for month := 1; month <= 12; month++ {
-		// m = GetMonthlyStatistics(year, month)
-		// result = SumProperties(result, GetMonthlyStatistics(year, m))
+	totalProperties := make(map[string]Property)
+	for month := 0; month <= 11; month++ {
+		statistics := GetMonthlyStatistics(year, month)
+		for _, p := range statistics {
+			if totalProperties[p.Name].Value == 0 {
+				totalProperties[p.Name] = p
+				continue
+			}
+			psum, err := SumProperties(totalProperties[p.Name], p)
+			if err != nil {
+				log.Printf("error summing properties: %s\n", err)
+				// fmt.Printf("%v\n", totalProperties[p.Name])
+				continue
+			}
+			totalProperties[p.Name] = *psum
+		}
 	}
 
-	return []Property{}
+	var keys []string
+	for key := range totalProperties {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	totalStatistics := make([]Property, 0, len(totalProperties))
+	for _, key := range keys {
+		totalStatistics = append(totalStatistics, totalProperties[key])
+	}
+
+	return totalStatistics
 }
 
 func SumProperties(a, b Property) (*Property, error) {
@@ -34,8 +48,7 @@ func SumProperties(a, b Property) (*Property, error) {
 		return nil, fmt.Errorf("error: properties are not the same type")
 	}
 
-	// TODO: add unit detection and conversion when required
-	if a.Unit != b.Unit {
+	if a.Unit != b.Unit && a.Value != 0 && b.Value != 0 {
 		return nil, fmt.Errorf("error: properties have not the same unit")
 	}
 
@@ -48,36 +61,26 @@ func SumProperties(a, b Property) (*Property, error) {
 }
 
 func GetMonthlyStatistics(year, month int) []Property {
-	monthCount, err := AggregateMonthlyProperties(year, month)
+	monthTotals, err := AggregateMonthlyProperties(year, month)
 	if err != nil {
 		log.Fatal(err)
+		return nil
 	}
 
-	if len(monthCount) == 0 {
+	if len(monthTotals) == 0 {
 		return nil
 	}
 
 	var propertyNames []string
-	for i := range monthCount {
+	for i := range monthTotals {
 		propertyNames = append(propertyNames, i)
 	}
 	sort.Strings(propertyNames)
 
 	var statistics []Property
 	for _, name := range propertyNames {
-		p := monthCount[name]
-		value := int(p.Value)
-		unit := p.Unit
-		if unit == "seconds" && value >= 200 {
-			value = value / 60
-			unit = "minutes"
-		}
-		if unit == "minutes" && value >= 100 {
-			value = value / 60
-			unit = "hours"
-		}
-		p.Value = value
-		p.Unit = unit
+		p := monthTotals[name]
+		p.Value = int(p.Value)
 		statistics = append(statistics, p)
 	}
 
