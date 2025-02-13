@@ -3,6 +3,8 @@ package journal
 import (
 	"fmt"
 	"log"
+	"os"
+	"text/tabwriter"
 	"time"
 
 	"github.com/danielsrojo/obser/pkg/obsidian"
@@ -50,20 +52,19 @@ func showMonthStatistics(year, month int) {
 		return
 	}
 
-	fmt.Printf("\n### %s %d ###\n", time.Month(month), year)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "%s\t%s\t%s\n", "NAME", "VALUE", "UNIT")
 	for _, p := range statistics {
 		if p.Value == 0 {
 			continue
 		}
-		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
+		formatProperty(&p)
+		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
 	}
+	w.Flush()
 }
 
 func showYearStatistics(year int) {
-	for m := 1; m <= 12; m++ {
-		showMonthStatistics(year, m)
-	}
-
 	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
 		log.Fatal(err)
@@ -72,14 +73,16 @@ func showYearStatistics(year int) {
 		return
 	}
 
-	fmt.Printf("\n### %d ###\n", year)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "%s\t%s\t%s\n", "NAME", "VALUE", "UNIT")
 	for _, p := range statistics {
 		if p.Value == 0 {
 			continue
 		}
 		formatProperty(&p)
-		fmt.Printf("%s: %d %s\n", p.Name, p.Value, p.Unit)
+		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
 	}
+	w.Flush()
 }
 
 func setDefaultDateValues(year, month *int) {

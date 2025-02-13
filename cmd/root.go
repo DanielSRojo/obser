@@ -17,7 +17,6 @@ var (
 		Short: "obser",
 		Long:  "obser",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("RootCmd")
 			cmd.Help()
 		},
 	}
