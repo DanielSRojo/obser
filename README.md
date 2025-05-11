@@ -25,6 +25,11 @@ Obser is a command-line interface (CLI) tool for managing and analyzing Obsidian
    ```bash
    sudo mv obser /usr/local/bin/
    ```
+   For user installation:
+   ```bash
+   sudo mv obser /usr/local/bin/
+   ```
+
 
 ## Usage
 
@@ -63,19 +68,19 @@ obser list [subcommand]
 :> [!WARNING]
 
 ```bash
-obser statistics [year] [month]
+obser journal statistics [year] [month]
 ```
 
 - Get monthly statistics:
 
   ```bash
-  obser statistics 2023 10
+  obser journal statistics 2023 10
   ```
 
 - Get yearly statistics:
 
   ```bash
-  obser statistics 2023
+  obser journal statistics 2023
   ```
 
 ## Configuration
