@@ -7,11 +7,9 @@ import (
 )
 
 type Note struct {
-	Content    string
 	Directory  string
 	Properties []Property
 	Title      string
-	Type       string
 }
 
 func (n *Note) LoadProperties() error {

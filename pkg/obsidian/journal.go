@@ -69,12 +69,6 @@ func GetPropertiesNames() ([]string, error) {
 	return propertyList, nil
 }
 
-// contains checks if a string is in a slice
-func contains(slice []string, target string) bool {
-	index := sort.SearchStrings(slice, target)
-	return index < len(slice) && slice[index] == target
-}
-
 // GetJournalFiles returns the notes with type journal in the journal folder.
 func GetJournalFiles() ([]fs.DirEntry, error) {
 	dir, err := JournalDir()
