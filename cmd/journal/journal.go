@@ -8,5 +8,10 @@ var JournalCmd = &cobra.Command{
 	Use:   "journal",
 	Short: "Various journal management tools",
 	Long:  "", //TODO
-	Args:  cobra.MinimumNArgs(1),
+	// Runnable with no arguments, so that an unknown subcommand is an error
+	// instead of printing the help and exiting 0.
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
 }
