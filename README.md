@@ -222,11 +222,3 @@ chain                65%   81%   75%  ↑
 guitar         21%   33%   46%   27%  ↑
 read           11%    5%   47%   39%  ↑
 ```
-
-## Configuration
-
-You can specify a configuration file using the `--config` flag:
-
-```bash
-obser --config /path/to/config.toml [command]
-```

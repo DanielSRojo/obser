@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	cfgFile  string
 	vaultDir string
 
 	RootCmd = &cobra.Command{
@@ -39,7 +38,6 @@ func Execute() {
 
 func init() {
 	RootCmd.PersistentFlags().StringVar(&vaultDir, "vault", "", "path to the Obsidian vault (default is $OBSER_VAULT or $HOME/.obsidian)")
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.obser.toml)")
 
 	RootCmd.AddCommand(list.ListCmd)
 	RootCmd.AddCommand(journal.JournalCmd)
