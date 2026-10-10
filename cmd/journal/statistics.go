@@ -2,7 +2,9 @@ package journal
 
 import (
 	"fmt"
+	"math"
 	"os"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -33,36 +35,6 @@ func init() {
 func showStatistics(year, month int) error {
 	setDefaultDateValues(&year, &month)
 
-	if month != 0 {
-		return showMonthStatistics(year, month)
-	}
-
-	return showYearStatistics(year)
-}
-
-func showMonthStatistics(year, month int) error {
-	statistics, err := obsidian.GetStatistics(year, month)
-	if err != nil {
-		return err
-	}
-
-	if len(statistics) == 0 {
-		return nil
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "%s\t%s\t%s\n", "NAME", "VALUE", "UNIT")
-	for _, p := range statistics {
-		if p.Value == 0 {
-			continue
-		}
-		formatProperty(&p)
-		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
-	}
-	return w.Flush()
-}
-
-func showYearStatistics(year int) error {
 	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
 		return err
@@ -74,11 +46,8 @@ func showYearStatistics(year int) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "%s\t%s\t%s\n", "NAME", "VALUE", "UNIT")
 	for _, p := range statistics {
-		if p.Value == 0 {
-			continue
-		}
-		formatProperty(&p)
-		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
+		value, unit := formatValue(p)
+		fmt.Fprintf(w, "%s\t%s\t%s\n", p.Name, value, unit)
 	}
 	return w.Flush()
 }
@@ -94,13 +63,15 @@ func setDefaultDateValues(year, month *int) {
 	}
 }
 
-func formatProperty(p *obsidian.Property) {
-	if p.Unit == "seconds" && p.Value >= 200 {
-		p.Value = p.Value / 60
-		p.Unit = "minutes"
+// formatValue shows durations of 200 seconds or more in minutes, and of 100
+// minutes or more in hours, rounded to whole minutes or tenths of an hour.
+func formatValue(p obsidian.Property) (value, unit string) {
+	if p.Unit != "seconds" || p.Value < 200 {
+		return strconv.Itoa(p.Value), p.Unit
 	}
-	if p.Unit == "minutes" && p.Value >= 100 {
-		p.Value = p.Value / 60
-		p.Unit = "hours"
+	minutes := float64(p.Value) / 60
+	if math.Round(minutes) < 100 {
+		return strconv.Itoa(int(math.Round(minutes))), "minutes"
 	}
+	return strconv.FormatFloat(math.Round(minutes/6)/10, 'f', -1, 64), "hours"
 }
