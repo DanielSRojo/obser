@@ -2,7 +2,6 @@ package journal
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"text/tabwriter"
 	"time"
@@ -19,8 +18,8 @@ var (
 		Use:   "statistics",
 		Short: "Show journal properties based statistics",
 		Long:  "Show statisctics based on journal notes properties values",
-		Run: func(cmd *cobra.Command, args []string) {
-			showStatistics(year, month)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return showStatistics(year, month)
 		},
 	}
 )
@@ -31,25 +30,24 @@ func init() {
 	JournalCmd.AddCommand(statisticsCmd)
 }
 
-func showStatistics(year, month int) {
+func showStatistics(year, month int) error {
 	setDefaultDateValues(&year, &month)
 
 	if month != 0 {
-		showMonthStatistics(year, month)
-		return
+		return showMonthStatistics(year, month)
 	}
 
-	showYearStatistics(year)
+	return showYearStatistics(year)
 }
 
-func showMonthStatistics(year, month int) {
+func showMonthStatistics(year, month int) error {
 	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if len(statistics) == 0 {
-		return
+		return nil
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -61,16 +59,16 @@ func showMonthStatistics(year, month int) {
 		formatProperty(&p)
 		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
 	}
-	w.Flush()
+	return w.Flush()
 }
 
-func showYearStatistics(year int) {
+func showYearStatistics(year int) error {
 	statistics, err := obsidian.GetStatistics(year, month)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if len(statistics) == 0 {
-		return
+		return nil
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -82,7 +80,7 @@ func showYearStatistics(year int) {
 		formatProperty(&p)
 		fmt.Fprintf(w, "%s\t%d\t%s\n", p.Name, p.Value, p.Unit)
 	}
-	w.Flush()
+	return w.Flush()
 }
 
 func setDefaultDateValues(year, month *int) {

@@ -15,17 +15,18 @@ var entriesCmd = &cobra.Command{
 	Use:   "entries",
 	Short: "entries",
 	Long:  "entries",
-	Run: func(cmd *cobra.Command, args []string) {
-		listJournalEntries()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return listJournalEntries()
 	},
 }
 
-func listJournalEntries() {
+func listJournalEntries() error {
 	entries, err := obsidian.GetJournalEntries()
 	if err != nil {
-		panic("ERROR journal entries")
+		return fmt.Errorf("couldn't list journal entries: %w", err)
 	}
 	for _, e := range entries {
 		fmt.Println(e)
 	}
+	return nil
 }

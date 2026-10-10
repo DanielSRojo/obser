@@ -6,10 +6,13 @@ import (
 	"sort"
 )
 
-func GetYearlyStatistics(year int) []Property {
+func GetYearlyStatistics(year int) ([]Property, error) {
 	totalProperties := make(map[string]Property)
-	for month := 0; month <= 11; month++ {
-		statistics := GetMonthlyStatistics(year, month)
+	for month := 1; month <= 12; month++ {
+		statistics, err := GetMonthlyStatistics(year, month)
+		if err != nil {
+			return nil, err
+		}
 		for _, p := range statistics {
 			if totalProperties[p.Name].Value == 0 {
 				totalProperties[p.Name] = p
@@ -36,7 +39,7 @@ func GetYearlyStatistics(year int) []Property {
 		totalStatistics = append(totalStatistics, totalProperties[key])
 	}
 
-	return totalStatistics
+	return totalStatistics, nil
 }
 
 func SumProperties(a, b Property) (*Property, error) {
@@ -60,15 +63,14 @@ func SumProperties(a, b Property) (*Property, error) {
 	}, nil
 }
 
-func GetMonthlyStatistics(year, month int) []Property {
+func GetMonthlyStatistics(year, month int) ([]Property, error) {
 	monthTotals, err := AggregateMonthlyProperties(year, month)
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, err
 	}
 
 	if len(monthTotals) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	var propertyNames []string
@@ -84,12 +86,12 @@ func GetMonthlyStatistics(year, month int) []Property {
 		statistics = append(statistics, p)
 	}
 
-	return statistics
+	return statistics, nil
 }
 
 func GetStatistics(year, month int) ([]Property, error) {
 	if month != 0 {
-		return GetMonthlyStatistics(year, month), nil
+		return GetMonthlyStatistics(year, month)
 	}
-	return GetYearlyStatistics(year), nil
+	return GetYearlyStatistics(year)
 }

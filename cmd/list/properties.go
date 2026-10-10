@@ -15,20 +15,19 @@ var propertiesCmd = &cobra.Command{
 	Use:   "properties",
 	Short: "properties",
 	Long:  "properties",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("properties command")
-		listProperties()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return listProperties()
 	},
 }
 
-func listProperties() {
+func listProperties() error {
 	properties, err := obsidian.GetPropertiesNames()
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
-	fmt.Println("# Properties")
 	for _, p := range properties {
 		fmt.Println(p)
 	}
+	return nil
 }

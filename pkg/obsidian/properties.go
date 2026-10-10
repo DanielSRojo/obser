@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type PropertyType int
@@ -23,43 +25,79 @@ type Property struct {
 	Type    PropertyType
 }
 
+// GetProperties parses the YAML frontmatter of a note into properties, in the
+// order they are declared.
 func GetProperties(text string) ([]Property, error) {
-	text, _ = GetFrontmatter(text)
-	lines := strings.Split(text, "\n")
+	frontmatter, err := GetFrontmatter(text)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(frontmatter) == "" {
+		return nil, nil
+	}
 
-	properties := make([]Property, len(lines))
-	for i, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		line = strings.TrimSpace(line)
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(frontmatter), &doc); err != nil {
+		return nil, fmt.Errorf("invalid frontmatter: %w", err)
+	}
+	if len(doc.Content) == 0 {
+		return nil, nil
+	}
+	mapping := doc.Content[0]
+	if mapping.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("invalid frontmatter: expected key/value pairs")
+	}
 
-		var err error
-		properties[i], err = ParseProperty(line)
+	var properties []Property
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		name := strings.TrimSpace(mapping.Content[i].Value)
+		property, err := parsePropertyValue(name, nodeContent(mapping.Content[i+1]))
 		if err != nil {
 			return nil, err
 		}
+		properties = append(properties, property)
 	}
 
 	return properties, nil
 }
 
+// nodeContent flattens a YAML value into the string form used by properties.
+// Lists are joined with ", "; nested mappings are not supported and yield "".
+func nodeContent(n *yaml.Node) string {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if n.Tag == "!!null" {
+			return ""
+		}
+		return n.Value
+	case yaml.SequenceNode:
+		var items []string
+		for _, item := range n.Content {
+			if c := nodeContent(item); c != "" {
+				items = append(items, c)
+			}
+		}
+		return strings.Join(items, ", ")
+	case yaml.AliasNode:
+		return nodeContent(n.Alias)
+	}
+	return ""
+}
+
+// GetFrontmatter returns the YAML between the opening "---" line and the next
+// line consisting only of "---" (or "..."). Text without frontmatter returns "".
 func GetFrontmatter(text string) (string, error) {
-	if !strings.HasPrefix(text, "---") {
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	if strings.TrimRight(lines[0], " \t") != "---" {
 		return "", nil
 	}
-	parts := strings.Split(text, "---")
-	if len(parts) > 1 {
-		text = parts[1]
-	} else {
-		return "", fmt.Errorf("error: YAML delimiters not found")
+	for i := 1; i < len(lines); i++ {
+		line := strings.TrimRight(lines[i], " \t")
+		if line == "---" || line == "..." {
+			return strings.Join(lines[1:i], "\n"), nil
+		}
 	}
-	lines := strings.Split(text, "\n")
-	lines = lines[1 : len(lines)-1]
-	text = strings.Join(lines, "\n")
-
-	return text, nil
+	return "", fmt.Errorf("error: closing frontmatter delimiter not found")
 }
 
 func ParseProperty(s string) (Property, error) {
@@ -68,13 +106,12 @@ func ParseProperty(s string) (Property, error) {
 		return Property{}, fmt.Errorf("empty string")
 	}
 
-	parts := strings.Split(s, ":")
-	name := strings.TrimSpace(parts[0])
-	if len(parts) < 2 {
-		return Property{Name: name}, nil
-	}
+	name, content, _ := strings.Cut(s, ":")
+	return parsePropertyValue(strings.TrimSpace(name), content)
+}
 
-	content := strings.TrimSpace(parts[1])
+func parsePropertyValue(name, content string) (Property, error) {
+	content = strings.TrimSpace(content)
 	if content == "" {
 		return Property{Name: name}, nil
 	}
@@ -100,7 +137,7 @@ func ParseProperty(s string) (Property, error) {
 	re := regexp.MustCompile(`(\d+)\s*(hour|minute|second)s?`)
 	match := re.FindStringSubmatch(content)
 
-	parts = strings.Split(content, " ")
+	parts := strings.Split(content, " ")
 	if match == nil {
 		value, err := strconv.Atoi(parts[0])
 		if err != nil {

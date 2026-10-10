@@ -3,7 +3,6 @@ package obsidian
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,32 +11,28 @@ import (
 
 var vaultDir string
 
-func init() {
+// DefaultVaultDir returns the vault used when none is configured: ~/.obsidian.
+func DefaultVaultDir() (string, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		panic("Unable to determine user home directory: " + err.Error())
+		return "", fmt.Errorf("unable to determine user home directory: %w", err)
 	}
-	vaultDir = filepath.Join(userHome, ".obsidian")
+	return filepath.Join(userHome, ".obsidian"), nil
+}
+
+// SetVaultDir sets the vault directory all other functions operate on.
+func SetVaultDir(dir string) {
+	vaultDir = dir
 }
 
 func GetJournalEntries() ([]string, error) {
-	var entries []string
-	files, err := os.ReadDir(vaultDir)
+	files, err := GetJournalFiles()
 	if err != nil {
 		return nil, err
 	}
+	var entries []string
 	for _, file := range files {
-		if !file.IsDir() {
-			note := &Note{
-				Content:    "",
-				Directory:  vaultDir,
-				Properties: []Property{},
-				Title:      file.Name(),
-			}
-			if note.IsJournal() {
-				entries = append(entries, file.Name())
-			}
-		}
+		entries = append(entries, file.Name())
 	}
 	return entries, nil
 }
@@ -46,7 +41,6 @@ func GetJournalEntries() ([]string, error) {
 func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 	journalFiles, err := os.ReadDir(vaultDir)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 
@@ -61,9 +55,8 @@ func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 			Title:     journalFile.Name(),
 			Directory: vaultDir,
 		}
-		err = note.LoadProperties()
-		if err != nil || len(note.Properties) < 1 {
-			continue
+		if err := note.LoadProperties(); err != nil {
+			return nil, err
 		}
 
 		for _, property := range note.Properties {
@@ -93,7 +86,6 @@ func AggregateMonthlyProperties(year, month int) (map[string]Property, error) {
 func AggregateProperty(propertyName string) ([]int, error) {
 	journalFiles, err := os.ReadDir(vaultDir)
 	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 
@@ -152,8 +144,7 @@ func GetPropertiesNames() ([]string, error) {
 			Title:     journalFile.Name(),
 		}
 		if err := note.LoadProperties(); err != nil {
-			log.Println(err)
-			continue
+			return nil, err
 		}
 
 		for _, p := range note.Properties {
@@ -190,7 +181,11 @@ func GetJournalFiles() ([]fs.DirEntry, error) {
 			Directory: vaultDir,
 			Title:     f.Name(),
 		}
-		if !note.IsJournal() {
+		isJournal, err := note.IsJournal()
+		if err != nil {
+			return nil, err
+		}
+		if !isJournal {
 			continue
 		}
 

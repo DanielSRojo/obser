@@ -24,7 +24,7 @@ func (n *Note) LoadProperties() error {
 
 	n.Properties, err = GetProperties(string(data))
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", file, err)
 	}
 
 	return nil
@@ -47,19 +47,18 @@ func GetNotesNames() ([]string, error) {
 	return names, nil
 }
 
-func (n *Note) IsJournal() bool {
+func (n *Note) IsJournal() (bool, error) {
 	if err := n.LoadProperties(); err != nil {
-		fmt.Println(err)
-		return false
+		return false, err
 	}
 
 	for _, p := range n.Properties {
 		if strings.ToLower(p.Name) == "type" && strings.ToLower(p.Content) == "journal" {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 func IsHidden(path string) bool {

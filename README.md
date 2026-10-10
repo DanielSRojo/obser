@@ -37,6 +37,12 @@ Obser is a command-line interface (CLI) tool for managing and analyzing Obsidian
 obser [command]
 ```
 
+The vault is read from `--vault`, then the `OBSER_VAULT` environment variable, and defaults to `~/.obsidian`:
+
+```bash
+obser --vault ~/notes journal entries
+```
+
 ### Available Commands
 
 #### List Commands
