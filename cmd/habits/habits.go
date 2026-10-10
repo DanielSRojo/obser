@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	summaryYear int
+	summaryYear  int
+	summaryMonth int
 
 	HabitsCmd = &cobra.Command{
 		Use:   "habits",
@@ -22,16 +23,18 @@ var (
 current and longest streak, total and average amount, and a sparkline of the
 monthly completion rate.
 
-By default it covers the last 365 days; use --year for a calendar year.`,
+By default it covers the last 365 days; use --year for a calendar year and
+--month for a calendar month of --year or of the current year.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return showSummary(cmd.Flags().Changed("year"), summaryYear)
+			return showSummary(cmd.Flags().Changed("year"), summaryYear, cmd.Flags().Changed("month"), summaryMonth)
 		},
 	}
 )
 
 func init() {
 	HabitsCmd.Flags().IntVarP(&summaryYear, "year", "y", 0, "calendar year to summarize (default is the last 365 days)")
+	HabitsCmd.Flags().IntVarP(&summaryMonth, "month", "m", 0, "calendar month to summarize, 1-12, of --year or the current year")
 }
 
 // loadJournal loads the journal up to today and prints its warnings to stderr.
@@ -60,6 +63,23 @@ func yearRange(j *obsidian.Journal, year int) (obsidian.Range, error) {
 	return obsidian.Range{From: from, To: to}, nil
 }
 
+// monthRange returns the given calendar month, ending today for the current
+// month, after checking that the journal covers it.
+func monthRange(j *obsidian.Journal, year, month int) (obsidian.Range, error) {
+	if month < 1 || month > 12 {
+		return obsidian.Range{}, fmt.Errorf("invalid month %d, must be 1-12", month)
+	}
+	from := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
+	to := from.AddDate(0, 1, -1)
+	if len(j.Days) == 0 || to.Before(j.Days[0].Date) || from.After(j.Today) {
+		return obsidian.Range{}, fmt.Errorf("no journal entries for %s", from.Format("January 2006"))
+	}
+	if to.After(j.Today) {
+		to = j.Today
+	}
+	return obsidian.Range{From: from, To: to}, nil
+}
+
 // habitsIn returns the habits whose tracking starts on or before the end of
 // the range, sorted by name.
 func habitsIn(j *obsidian.Journal, r obsidian.Range) []obsidian.Habit {
@@ -76,16 +96,23 @@ func percent(rate float64) string {
 	return strconv.Itoa(int(math.Round(rate*100))) + "%"
 }
 
-func showSummary(hasYear bool, year int) error {
+func showSummary(hasYear bool, year int, hasMonth bool, month int) error {
 	j, err := loadJournal()
 	if err != nil {
 		return err
 	}
 	r := obsidian.Range{From: j.Today.AddDate(0, 0, -364), To: j.Today}
-	if hasYear {
-		if r, err = yearRange(j, year); err != nil {
-			return err
+	switch {
+	case hasMonth:
+		if !hasYear {
+			year = j.Today.Year()
 		}
+		r, err = monthRange(j, year, month)
+	case hasYear:
+		r, err = yearRange(j, year)
+	}
+	if err != nil {
+		return err
 	}
 
 	style := render.DetectStyle()

@@ -69,29 +69,6 @@ obser list [subcommand]
   obser list properties
   ```
 
-#### Statistics Commands
-
-```bash
-obser journal statistics [-y YYYY] [-m MM]
-```
-
-Prints each habit's total for a month or a year as a `NAME VALUE UNIT` table: the amount in the habit's unit, or the number of days done for habits without amounts (like `chain: true`).
-
-- Get monthly statistics:
-
-  ```bash
-  obser journal statistics -y 2023 -m 10
-  ```
-
-- Get yearly statistics:
-
-  ```bash
-  obser journal statistics -y 2023
-  ```
-
-> [!NOTE]
-> Totals are computed from the same journal data as `obser habits`, so they may differ from older versions: notes that aren't journal entries (like `2023-11-29-guitar.md`) and entries dated after today are no longer counted, and bare numbers are no longer mixed with values in another unit.
-
 #### Fill Command
 
 ```bash
@@ -144,14 +121,15 @@ Journal entries are the `YYYY-MM-DD.md` notes (with or without `type: journal`) 
 #### Summary
 
 ```bash
-obser habits [--year YYYY]
+obser habits [--year YYYY] [--month M]
 ```
 
-Shows one row per habit for the last 365 days, or for a calendar year with `--year`: days done, completion rate, current streak, longest streak, total, average per done day, and a sparkline of the completion rate over the last 12 months.
+Shows one row per habit for the last 365 days, for a calendar year with `--year`, or for a calendar month with `--month` (of `--year`, or of the current year): days done, completion rate, current streak, longest streak, total, average per done day, and a sparkline of the completion rate over the last 12 months.
 
 ```bash
 obser habits
 obser habits --year 2024
+obser habits --year 2024 --month 3
 ```
 
 ```
@@ -163,6 +141,9 @@ journaling       4    1%       0     1  410 words  103 words  ▁▁▁▁▁▁
 ```
 
 Colors are used only when the output is a terminal and `NO_COLOR` is not set.
+
+> [!NOTE]
+> `obser journal statistics` was removed. Its totals are the `TOTAL` column (or `DAYS`, for habits without amounts like `chain: true`) of `obser habits --year YYYY [--month M]`.
 
 #### Single habit
 

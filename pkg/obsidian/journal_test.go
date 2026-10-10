@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func setupVault(t *testing.T, files map[string]string) {
@@ -38,35 +39,28 @@ func TestGetJournalEntries(t *testing.T) {
 	}
 }
 
-func TestGetStatistics(t *testing.T) {
+func TestStatsMonthAndYearTotals(t *testing.T) {
 	setupVault(t, map[string]string{
 		"2024-03-01.md": "---\ntype: journal\nreading: 1 hour\npages: 10\n---\n",
 		"2024-03-02.md": "---\ntype: journal\nreading: 30 minutes\npages: 5\n---\n",
 		"2024-12-31.md": "---\ntype: journal\npages: 7\n---\n",
 	})
-
-	month, err := GetStatistics(2024, 3)
+	j, err := LoadJournal(time.Date(2025, 1, 15, 0, 0, 0, 0, time.Local))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]int{}
-	for _, p := range month {
-		got[p.Name] = p.Value
+
+	march := Range{time.Date(2024, 3, 1, 0, 0, 0, 0, time.Local), time.Date(2024, 3, 31, 0, 0, 0, 0, time.Local)}
+	if got := j.Stats("reading", march).Total; got != 5400 {
+		t.Errorf("March reading = %d, want 5400", got)
 	}
-	if got["reading"] != 5400 || got["pages"] != 15 {
-		t.Errorf("monthly totals = %v", got)
+	if got := j.Stats("pages", march).Total; got != 15 {
+		t.Errorf("March pages = %d, want 15", got)
 	}
 
-	year, err := GetStatistics(2024, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = map[string]int{}
-	for _, p := range year {
-		got[p.Name] = p.Value
-	}
-	if got["pages"] != 22 {
-		t.Errorf("yearly pages = %d, want 22 (December must be included)", got["pages"])
+	year := Range{time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local), time.Date(2024, 12, 31, 0, 0, 0, 0, time.Local)}
+	if got := j.Stats("pages", year).Total; got != 22 {
+		t.Errorf("2024 pages = %d, want 22 (December must be included)", got)
 	}
 }
 
@@ -78,33 +72,30 @@ func TestMissingVaultReturnsError(t *testing.T) {
 	if _, err := GetJournalEntries(); err == nil {
 		t.Error("expected error for missing vault")
 	}
-	if _, err := GetStatistics(2024, 3); err == nil {
+	if _, err := LoadJournal(time.Now()); err == nil {
 		t.Error("expected error for missing vault")
 	}
 }
 
-func TestMonthlyStatisticsUseJournalEntriesOnly(t *testing.T) {
+func TestMonthStatsUseJournalEntriesOnly(t *testing.T) {
 	setupVault(t, map[string]string{
 		"2023-11-28.md":        "---\ntype: journal\nguitar: 30 minutes\njournaling: 150 words\nchain: true\n---\n",
 		"2023-11-29.md":        "---\ntype: journal\nguitar: 30 minutes\njournaling: 120\nchain: false\n---\n",
 		"2023-11-29-guitar.md": "---\ntype: journal\nguitar: 60 minutes\n---\n# Practice",
 	})
-
-	month, err := GetStatistics(2023, 11)
+	j, err := LoadJournal(time.Date(2023, 12, 1, 0, 0, 0, 0, time.Local))
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]Property{}
-	for _, p := range month {
-		got[p.Name] = p
+
+	november := Range{time.Date(2023, 11, 1, 0, 0, 0, 0, time.Local), time.Date(2023, 11, 30, 0, 0, 0, 0, time.Local)}
+	if s, unit := j.Stats("guitar", november), j.Habits["guitar"].Unit; s.Total != 3600 || unit != "seconds" {
+		t.Errorf("guitar = %d %s, want 3600 seconds (the -guitar note must not count)", s.Total, unit)
 	}
-	if p := got["guitar"]; p.Value != 3600 || p.Unit != "seconds" {
-		t.Errorf("guitar = %d %s, want 3600 seconds (the -guitar note must not count)", p.Value, p.Unit)
+	if s, unit := j.Stats("journaling", november), j.Habits["journaling"].Unit; s.Total != 270 || unit != "words" {
+		t.Errorf("journaling = %d %s, want 270 words", s.Total, unit)
 	}
-	if p := got["journaling"]; p.Value != 270 || p.Unit != "words" {
-		t.Errorf("journaling = %d %s, want 270 words", p.Value, p.Unit)
-	}
-	if p := got["chain"]; p.Value != 1 {
-		t.Errorf("chain = %d, want 1 day done", p.Value)
+	if s := j.Stats("chain", november); s.DaysDone != 1 || s.HasTotal {
+		t.Errorf("chain = %d days done (has total %v), want 1 day without a total", s.DaysDone, s.HasTotal)
 	}
 }
