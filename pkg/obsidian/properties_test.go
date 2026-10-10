@@ -33,28 +33,33 @@ func TestGetFrontmatter(t *testing.T) {
 	}
 }
 
-func TestParseProperty(t *testing.T) {
+func TestParsePropertyValue(t *testing.T) {
 	tests := []struct {
-		in   string
-		want Property
+		name, content string
+		want          Property
 	}{
-		{"done: true", Property{Name: "done", Content: "true", Value: 1, Type: Boolean}},
-		{"done: false", Property{Name: "done", Content: "false", Type: Boolean}},
-		{"reading: 2 hours", Property{Name: "reading", Content: "2 hours", Value: 7200, Unit: "seconds", Type: Numeric}},
-		{"run: 30 minutes", Property{Name: "run", Content: "30 minutes", Value: 1800, Unit: "seconds", Type: Numeric}},
-		{"pages: 12", Property{Name: "pages", Content: "12", Value: 12, Type: Numeric}},
-		{"distance: 5 km", Property{Name: "distance", Content: "5 km", Value: 5, Unit: "km", Type: Numeric}},
-		{"wake: 07:30", Property{Name: "wake", Content: "07:30", Type: Text}},
-		{"mood: Good", Property{Name: "mood", Content: "good", Type: Text}},
-		{"empty:", Property{Name: "empty"}},
+		{"done", "true", Property{Name: "done", Content: "true", Value: 1, Type: Boolean}},
+		{"done", "false", Property{Name: "done", Content: "false", Type: Boolean}},
+		{"reading", "2 hours", Property{Name: "reading", Content: "2 hours", Value: 7200, Unit: "seconds", Type: Numeric}},
+		{"run", "30 minutes", Property{Name: "run", Content: "30 minutes", Value: 1800, Unit: "seconds", Type: Numeric}},
+		{"run", "45 seconds", Property{Name: "run", Content: "45 seconds", Value: 45, Unit: "seconds", Type: Numeric}},
+		{"reading", "1.5 hours", Property{Name: "reading", Content: "1.5 hours", Value: 5400, Unit: "seconds", Type: Numeric}},
+		{"reading", "1 hour 30 minutes", Property{Name: "reading", Content: "1 hour 30 minutes", Value: 5400, Unit: "seconds", Type: Numeric}},
+		{"reading", "1h 30m", Property{Name: "reading", Content: "1h 30m", Value: 5400, Unit: "seconds", Type: Numeric}},
+		{"reading", "1h30m", Property{Name: "reading", Content: "1h30m", Value: 5400, Unit: "seconds", Type: Numeric}},
+		{"guitar", "90 min", Property{Name: "guitar", Content: "90 min", Value: 5400, Unit: "seconds", Type: Numeric}},
+		{"guitar", "2 hrs", Property{Name: "guitar", Content: "2 hrs", Value: 7200, Unit: "seconds", Type: Numeric}},
+		{"swim", "500 m", Property{Name: "swim", Content: "500 m", Value: 500, Unit: "m", Type: Numeric}},
+		{"note", "about 3 seconds of fame", Property{Name: "note", Content: "about 3 seconds of fame", Type: Text}},
+		{"pages", "12", Property{Name: "pages", Content: "12", Value: 12, Type: Numeric}},
+		{"distance", "5 km", Property{Name: "distance", Content: "5 km", Value: 5, Unit: "km", Type: Numeric}},
+		{"wake", "07:30", Property{Name: "wake", Content: "07:30", Type: Text}},
+		{"mood", "Good", Property{Name: "mood", Content: "good", Type: Text}},
+		{"empty", "", Property{Name: "empty"}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.in, func(t *testing.T) {
-			got, err := ParseProperty(tt.in)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != tt.want {
+		t.Run(tt.name+": "+tt.content, func(t *testing.T) {
+			if got := parsePropertyValue(tt.name, tt.content); got != tt.want {
 				t.Errorf("got %+v, want %+v", got, tt.want)
 			}
 		})

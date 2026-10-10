@@ -2,6 +2,7 @@ package obsidian
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,11 +52,7 @@ func GetProperties(text string) ([]Property, error) {
 	var properties []Property
 	for i := 0; i+1 < len(mapping.Content); i += 2 {
 		name := strings.TrimSpace(mapping.Content[i].Value)
-		property, err := parsePropertyValue(name, nodeContent(mapping.Content[i+1]))
-		if err != nil {
-			return nil, err
-		}
-		properties = append(properties, property)
+		properties = append(properties, parsePropertyValue(name, nodeContent(mapping.Content[i+1])))
 	}
 
 	return properties, nil
@@ -100,93 +97,68 @@ func GetFrontmatter(text string) (string, error) {
 	return "", fmt.Errorf("error: closing frontmatter delimiter not found")
 }
 
-func ParseProperty(s string) (Property, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return Property{}, fmt.Errorf("empty string")
-	}
+// durationPart matches one "<number> <unit>" part at the start of a duration,
+// such as "1.5 hours" or "30m".
+var durationPart = regexp.MustCompile(`^(\d+(?:\.\d+)?)(\s*)([a-z]+)\s*`)
 
-	name, content, _ := strings.Cut(s, ":")
-	return parsePropertyValue(strings.TrimSpace(name), content)
+// durationUnits are the seconds in each duration unit. Single letters only
+// count when attached to the number ("30m"), so "500 m" stays in meters.
+var durationUnits = map[string]float64{
+	"hour": 3600, "hours": 3600, "hr": 3600, "hrs": 3600, "h": 3600,
+	"minute": 60, "minutes": 60, "min": 60, "mins": 60, "m": 60,
+	"second": 1, "seconds": 1, "sec": 1, "secs": 1, "s": 1,
 }
 
-func parsePropertyValue(name, content string) (Property, error) {
+// parseDuration parses content made only of duration parts, such as
+// "1 hour 30 minutes", "1.5 hours" or "1h30m", into seconds.
+func parseDuration(content string) (int, bool) {
+	var seconds float64
+	for rest := content; rest != ""; {
+		m := durationPart.FindStringSubmatch(rest)
+		if m == nil {
+			return 0, false
+		}
+		unit, ok := durationUnits[m[3]]
+		if !ok || (len(m[3]) == 1 && m[2] != "") {
+			return 0, false
+		}
+		n, err := strconv.ParseFloat(m[1], 64)
+		if err != nil {
+			return 0, false
+		}
+		seconds += n * unit
+		rest = rest[len(m[0]):]
+	}
+	return int(math.Round(seconds)), true
+}
+
+func parsePropertyValue(name, content string) Property {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return Property{Name: name}, nil
+		return Property{Name: name}
 	}
 
-	var value int
 	content = strings.ToLower(content)
 	if content == "true" || content == "false" {
-		contentBool, err := strconv.ParseBool(content)
-		if err != nil {
-			return Property{}, fmt.Errorf("invalid format: %s", content)
-		}
-		if contentBool {
+		var value int
+		if content == "true" {
 			value = 1
 		}
-		return Property{
-			Name:    name,
-			Content: content,
-			Value:   value,
-			Type:    Boolean,
-		}, nil
+		return Property{Name: name, Content: content, Value: value, Type: Boolean}
 	}
 
-	re := regexp.MustCompile(`(\d+)\s*(hour|minute|second)s?`)
-	match := re.FindStringSubmatch(content)
+	if seconds, ok := parseDuration(content); ok {
+		return Property{Name: name, Content: content, Value: seconds, Unit: "seconds", Type: Numeric}
+	}
 
 	parts := strings.Split(content, " ")
-	if match == nil {
-		value, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return Property{
-				Name:    name,
-				Content: content,
-				Value:   value,
-				Type:    Text,
-			}, nil
-		}
-		var unit string
-		if len(parts) > 1 {
-			unit = parts[1]
-		}
-		return Property{
-			Name:    name,
-			Content: content,
-			Value:   value,
-			Unit:    unit,
-			Type:    Numeric,
-		}, nil
+	value, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return Property{Name: name, Content: content, Type: Text}
 	}
-
-	// TODO: write function for converting value to seconds
-	if len(match) == 3 {
-		var err error
-		value, err = strconv.Atoi(match[1])
-		if err != nil {
-			return Property{}, fmt.Errorf("invalid number: %s", match[1])
-		}
-
-		switch match[2] {
-		case "hour":
-			value = value * 3600
-		case "minute":
-			value = value * 60
-		case "second":
-			// Do nothing
-		default:
-			return Property{}, fmt.Errorf("unknown unit: %s", match[2])
-		}
-
+	var unit string
+	if len(parts) > 1 {
+		unit = parts[1]
 	}
-
-	return Property{
-		Name:    name,
-		Content: content,
-		Value:   int(value),
-		Unit:    "seconds",
-		Type:    Numeric,
-	}, nil
+	return Property{Name: name, Content: content, Value: value, Unit: unit, Type: Numeric}
 }
