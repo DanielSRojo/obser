@@ -112,6 +112,29 @@ Creates the missing journal entries from the template configured in Obsidian's D
   obser journal fill --from 2025-12-28 --to 2026-01-03 --dry-run
   ```
 
+#### Tidy Command
+
+```bash
+obser journal tidy [--before YYYY-MM-DD] [--dry-run]
+```
+
+Removes the frontmatter properties that were never filled in (`key:`, `null`, `~`, `""`, `[]` or `{}`) from the journal entries dated before today, or before the day given with `--before`. Only `YYYY-MM-DD.md` notes with `type: journal` are touched. Today's and future entries keep their template prompts, and `type`, `false`, and `0` values are always kept.
+
+This command edits your notes, so keep the vault in git or a sync service, and preview first:
+
+```bash
+obser journal tidy --dry-run
+obser journal tidy
+```
+
+Each changed note is listed with the properties removed from it, followed by a summary. Only the lines of the empty properties are deleted; the rest of the note stays byte-for-byte the same. Files are rewritten in place and keep their modification time, so Dataview `file.cday`/`file.mday` queries are unaffected. Entries whose frontmatter can't be parsed, or that still contain Templater tags, are skipped with a warning, and the command exits non-zero.
+
+- Only tidy entries from before 2025:
+
+  ```bash
+  obser journal tidy --before 2025-01-01 --dry-run
+  ```
+
 ### Habits
 
 Every frontmatter property of a journal entry that is done at least once (a number, a duration like `30 minutes`, or `true`) is a habit. A habit is done on a day when its value is `true`, a number above zero, or any non-empty text; an empty value, `false`, or a missing entry is not done. Rates only count days from the first day a habit was done, up to today.
