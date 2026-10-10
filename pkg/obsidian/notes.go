@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Note struct {
@@ -52,13 +51,7 @@ func (n *Note) IsJournal() (bool, error) {
 		return false, err
 	}
 
-	for _, p := range n.Properties {
-		if strings.ToLower(p.Name) == "type" && strings.ToLower(p.Content) == "journal" {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return isJournal(n.Properties), nil
 }
 
 func IsHidden(path string) bool {

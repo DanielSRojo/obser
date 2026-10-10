@@ -82,3 +82,29 @@ func TestMissingVaultReturnsError(t *testing.T) {
 		t.Error("expected error for missing vault")
 	}
 }
+
+func TestMonthlyStatisticsUseJournalEntriesOnly(t *testing.T) {
+	setupVault(t, map[string]string{
+		"2023-11-28.md":        "---\ntype: journal\nguitar: 30 minutes\njournaling: 150 words\nchain: true\n---\n",
+		"2023-11-29.md":        "---\ntype: journal\nguitar: 30 minutes\njournaling: 120\nchain: false\n---\n",
+		"2023-11-29-guitar.md": "---\ntype: journal\nguitar: 60 minutes\n---\n# Practice",
+	})
+
+	month, err := GetStatistics(2023, 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]Property{}
+	for _, p := range month {
+		got[p.Name] = p
+	}
+	if p := got["guitar"]; p.Value != 3600 || p.Unit != "seconds" {
+		t.Errorf("guitar = %d %s, want 3600 seconds (the -guitar note must not count)", p.Value, p.Unit)
+	}
+	if p := got["journaling"]; p.Value != 270 || p.Unit != "words" {
+		t.Errorf("journaling = %d %s, want 270 words", p.Value, p.Unit)
+	}
+	if p := got["chain"]; p.Value != 1 {
+		t.Errorf("chain = %d, want 1 day done", p.Value)
+	}
+}

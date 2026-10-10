@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/danielsrojo/obser/cmd/habits"
 	"github.com/danielsrojo/obser/cmd/journal"
 	"github.com/danielsrojo/obser/cmd/list"
 	"github.com/danielsrojo/obser/pkg/obsidian"
@@ -42,6 +43,7 @@ func init() {
 
 	RootCmd.AddCommand(list.ListCmd)
 	RootCmd.AddCommand(journal.JournalCmd)
+	RootCmd.AddCommand(habits.HabitsCmd)
 }
 
 // setVaultDir picks the vault from --vault, then $OBSER_VAULT, then the default.

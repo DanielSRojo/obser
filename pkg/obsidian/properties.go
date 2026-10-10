@@ -190,22 +190,3 @@ func parsePropertyValue(name, content string) (Property, error) {
 		Type:    Numeric,
 	}, nil
 }
-
-func NormalizeProperties(properties []Property) ([]Property, error) {
-	for i, p := range properties {
-		if p.Type != Numeric {
-			continue
-		}
-		if p.Unit == "" {
-			continue
-		}
-		re := regexp.MustCompile(`(\d+)\s*(hour|minute|second)s?`)
-		match := re.FindStringSubmatch(p.Unit)
-		if match == nil {
-			properties[i].Unit = ""
-			continue
-		}
-
-	}
-	return properties, nil
-}
