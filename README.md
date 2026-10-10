@@ -89,6 +89,26 @@ obser journal statistics [year] [month]
   obser journal statistics 2023
   ```
 
+#### Fill Command
+
+```bash
+obser journal fill [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--dry-run]
+```
+
+Creates the missing journal entries from the template configured in Obsidian's Daily notes plugin (`.obsidian/daily-notes.json`), rendering its Templater date expressions for each day. By default it fills every day after the last entry up to today. Existing entries are never overwritten.
+
+- Catch up since the last entry:
+
+  ```bash
+  obser journal fill
+  ```
+
+- Preview filling a specific range:
+
+  ```bash
+  obser journal fill --from 2025-12-28 --to 2026-01-03 --dry-run
+  ```
+
 ## Configuration
 
 You can specify a configuration file using the `--config` flag:
