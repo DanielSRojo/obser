@@ -57,17 +57,19 @@ obser list [subcommand]
   obser list notes
   ```
 
-- `journal`: List all journal entries
-
-  ```bash
-  obser list journal
-  ```
-
 - `properties`: List all properties used in notes
 
   ```bash
   obser list properties
   ```
+
+#### Entries Command
+
+```bash
+obser journal entries
+```
+
+Lists the journal entries with `type: journal`, as paths relative to the journal folder.
 
 #### Fill Command
 
