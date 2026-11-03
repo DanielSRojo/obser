@@ -2,7 +2,6 @@ package obsidian
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,38 +23,28 @@ func SetVaultDir(dir string) {
 	vaultDir = dir
 }
 
+// GetJournalEntries returns the paths, relative to the journal folder, of the
+// daily notes with type journal.
 func GetJournalEntries() ([]string, error) {
-	files, err := GetJournalFiles()
+	_, notes, err := typedJournalNotes()
 	if err != nil {
 		return nil, err
 	}
 	var entries []string
-	for _, file := range files {
-		entries = append(entries, file.Name())
+	for _, n := range notes {
+		entries = append(entries, filepath.ToSlash(n.Title))
 	}
 	return entries, nil
 }
 
 func GetPropertiesNames() ([]string, error) {
-	dir, err := JournalDir()
-	if err != nil {
-		return nil, err
-	}
-	journalFiles, err := GetJournalFiles()
+	_, notes, err := typedJournalNotes()
 	if err != nil {
 		return nil, err
 	}
 	var propertyList []string
 	seen := make(map[string]bool)
-	for _, journalFile := range journalFiles {
-		note := Note{
-			Directory: dir,
-			Title:     journalFile.Name(),
-		}
-		if err := note.LoadProperties(); err != nil {
-			return nil, err
-		}
-
+	for _, note := range notes {
 		for _, p := range note.Properties {
 			if p.Name == "" || seen[p.Name] {
 				continue
@@ -69,36 +58,23 @@ func GetPropertiesNames() ([]string, error) {
 	return propertyList, nil
 }
 
-// GetJournalFiles returns the notes with type journal in the journal folder.
-func GetJournalFiles() ([]fs.DirEntry, error) {
-	dir, err := JournalDir()
+// typedJournalNotes returns the journal folder and the daily notes in it with
+// type journal, with their properties loaded.
+func typedJournalNotes() (string, []Note, error) {
+	dir, entries, err := journalEntries()
 	if err != nil {
-		return nil, err
-	}
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	var journalFiles []fs.DirEntry
-	for _, f := range files {
-		if f.IsDir() {
-			continue
+	var notes []Note
+	for _, e := range entries {
+		note := Note{Directory: dir, Title: filepath.FromSlash(e.Name)}
+		if err := note.LoadProperties(); err != nil {
+			return "", nil, err
 		}
-		note := &Note{
-			Directory: dir,
-			Title:     f.Name(),
+		if isJournal(note.Properties) {
+			notes = append(notes, note)
 		}
-		isJournal, err := note.IsJournal()
-		if err != nil {
-			return nil, err
-		}
-		if !isJournal {
-			continue
-		}
-
-		journalFiles = append(journalFiles, f)
 	}
-
-	return journalFiles, nil
+	return dir, notes, nil
 }

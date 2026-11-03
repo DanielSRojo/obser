@@ -147,32 +147,24 @@ type Skipped struct {
 }
 
 // TidyJournal removes empty properties from the journal entries dated before
-// the given day. An entry is a YYYY-MM-DD.md note in the journal folder with
-// type: journal. Entries that can't be processed are skipped and reported.
+// the given day. An entry is a daily note in the journal folder, named after
+// the configured date format, with type: journal. Entries that can't be processed are skipped and reported.
 // Files are rewritten in place and keep their modification time. With dryRun
 // set, nothing is written.
 func TidyJournal(before time.Time, dryRun bool) ([]TidyResult, []Skipped, error) {
 	before = Midnight(before)
-	dir, err := JournalDir()
-	if err != nil {
-		return nil, nil, err
-	}
-	files, err := os.ReadDir(dir)
+	dir, entries, err := journalEntries()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var results []TidyResult
 	var skipped []Skipped
-	for _, f := range files {
-		if f.IsDir() || !journalFileName.MatchString(f.Name()) {
+	for _, e := range entries {
+		if !e.Date.Before(before) {
 			continue
 		}
-		date, err := time.ParseInLocation(journalDateLayout, strings.TrimSuffix(f.Name(), ".md"), time.Local)
-		if err != nil || !date.Before(before) {
-			continue
-		}
-		path := filepath.Join(dir, f.Name())
+		path := filepath.Join(dir, filepath.FromSlash(e.Name))
 		removed, err := tidyEntry(path, dryRun)
 		if err != nil {
 			skipped = append(skipped, Skipped{Path: path, Err: err})

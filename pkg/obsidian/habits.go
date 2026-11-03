@@ -2,8 +2,7 @@ package obsidian
 
 import (
 	"fmt"
-	"os"
-	"regexp"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -41,40 +40,30 @@ type Journal struct {
 	index map[time.Time]*Day
 }
 
-var journalFileName = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\.md$`)
-
 // metadataProperties are never habits.
 var metadataProperties = map[string]bool{"type": true, "aliases": true, "tags": true}
 
 // LoadJournal reads every journal entry dated on or before today from the
-// journal folder. Any YYYY-MM-DD.md note directly in the folder is an entry,
-// with or without type: journal.
+// journal folder. Any daily note named after the configured date format is an
+// entry, with or without type: journal.
 func LoadJournal(today time.Time) (*Journal, error) {
 	today = Midnight(today)
-	dir, err := JournalDir()
-	if err != nil {
-		return nil, err
-	}
-	files, err := os.ReadDir(dir)
+	dir, entries, err := journalEntries()
 	if err != nil {
 		return nil, err
 	}
 
 	var days []Day
 	var properties [][]Property
-	for _, f := range files {
-		if f.IsDir() || !journalFileName.MatchString(f.Name()) {
+	for _, e := range entries {
+		if e.Date.After(today) {
 			continue
 		}
-		date, err := time.ParseInLocation(journalDateLayout, strings.TrimSuffix(f.Name(), ".md"), time.Local)
-		if err != nil || date.After(today) {
-			continue
-		}
-		note := &Note{Directory: dir, Title: f.Name()}
+		note := &Note{Directory: dir, Title: filepath.FromSlash(e.Name)}
 		if err := note.LoadProperties(); err != nil {
 			return nil, err
 		}
-		days = append(days, Day{Date: date})
+		days = append(days, Day{Date: e.Date})
 		properties = append(properties, note.Properties)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -67,10 +68,104 @@ func readDailyNotesConfig() (DailyNotesConfig, error) {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("%s: %w", file, err)
 	}
-	if cfg.Format != "" && cfg.Format != "YYYY-MM-DD" {
-		return cfg, fmt.Errorf("%s: unsupported daily note format %q", file, cfg.Format)
+	if _, err := cfg.dateLayout(); err != nil {
+		return cfg, fmt.Errorf("%s: %w", file, err)
 	}
 	return cfg, nil
+}
+
+// dateLayout returns the Go time layout of a daily note's path relative to the
+// journal folder, without the .md extension. Of Obsidian's moment.js format,
+// only the YYYY, MM and DD tokens are supported, separated by -, _, . or
+// spaces, and by / for subfolders, as in YYYY/YYYY-MM-DD.
+func (cfg DailyNotesConfig) dateLayout() (string, error) {
+	if cfg.Format == "" {
+		return journalDateLayout, nil
+	}
+	unsupported := fmt.Errorf("unsupported daily note format %q", cfg.Format)
+	for _, token := range []string{"YYYY", "MM", "DD"} {
+		if !strings.Contains(cfg.Format, token) {
+			return "", unsupported
+		}
+	}
+	layout := strings.NewReplacer("YYYY", "2006", "MM", "01", "DD", "02").Replace(cfg.Format)
+	for _, segment := range strings.Split(cfg.Format, "/") {
+		rest := strings.NewReplacer("YYYY", "", "MM", "", "DD", "").Replace(segment)
+		if rest == segment || strings.Trim(rest, "-_. ") != "" {
+			return "", unsupported
+		}
+	}
+	return layout, nil
+}
+
+// journalEntry is a daily note in the journal folder.
+type journalEntry struct {
+	Name string    // path relative to the journal folder, with / separators
+	Date time.Time // local midnight
+}
+
+// journalEntries returns the journal folder and the daily notes in it, sorted
+// by date: the .md files whose path relative to the folder is exactly the
+// configured format for a valid date. Only the subfolders the format names are
+// searched, and hidden ones never are.
+func (cfg DailyNotesConfig) journalEntries() (string, []journalEntry, error) {
+	dir, err := cfg.journalDir()
+	if err != nil {
+		return "", nil, err
+	}
+	layout, err := cfg.dateLayout()
+	if err != nil {
+		return "", nil, err
+	}
+	depth := strings.Count(layout, "/")
+
+	var entries []journalEntry
+	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == dir {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if d.IsDir() {
+			if IsHidden(rel) || strings.Count(rel, "/") >= depth {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		name, ok := strings.CutSuffix(rel, ".md")
+		if !ok {
+			return nil
+		}
+		date, err := time.ParseInLocation(layout, name, time.Local)
+		if err != nil || date.Format(layout) != name {
+			return nil
+		}
+		entries = append(entries, journalEntry{Name: rel, Date: date})
+		return nil
+	})
+	if err != nil {
+		return "", nil, err
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Date.Before(entries[j].Date) })
+	return dir, entries, nil
+}
+
+// journalEntries returns the configured journal folder and its daily notes.
+func journalEntries() (string, []journalEntry, error) {
+	cfg, err := readDailyNotesConfig()
+	if errors.Is(err, fs.ErrNotExist) {
+		cfg, err = DailyNotesConfig{}, nil
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	return cfg.journalEntries()
 }
 
 // journalDir returns the configured journal folder and checks that it exists.
@@ -92,28 +187,15 @@ func (cfg DailyNotesConfig) journalDir() (string, error) {
 // LastJournalDate returns the date of the most recent daily note on or before
 // the given day, or the zero time if there is none.
 func LastJournalDate(cfg DailyNotesConfig, until time.Time) (time.Time, error) {
-	dir, err := cfg.journalDir()
-	if err != nil {
-		return time.Time{}, err
-	}
-	files, err := os.ReadDir(dir)
+	_, entries, err := cfg.journalEntries()
 	if err != nil {
 		return time.Time{}, err
 	}
 
 	var last time.Time
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		date, err := time.Parse(journalDateLayout, strings.TrimSuffix(f.Name(), ".md"))
-		if err != nil || !strings.HasSuffix(f.Name(), ".md") {
-			continue
-		}
-		if date.After(until) {
-			continue
-		}
-		if date.After(last) {
+	for _, e := range entries {
+		date := time.Date(e.Date.Year(), e.Date.Month(), e.Date.Day(), 0, 0, 0, 0, time.UTC)
+		if !date.After(until) {
 			last = date
 		}
 	}
@@ -128,6 +210,10 @@ func FillJournal(cfg DailyNotesConfig, from, to time.Time, dryRun bool) ([]strin
 	if err != nil {
 		return nil, err
 	}
+	layout, err := cfg.dateLayout()
+	if err != nil {
+		return nil, err
+	}
 	templateFile := filepath.Join(vaultDir, cfg.Template)
 	if filepath.Ext(templateFile) != ".md" {
 		templateFile += ".md"
@@ -139,7 +225,7 @@ func FillJournal(cfg DailyNotesConfig, from, to time.Time, dryRun bool) ([]strin
 
 	var created []string
 	for day := from; !day.After(to); day = day.AddDate(0, 0, 1) {
-		name := filepath.Join(dir, day.Format(journalDateLayout)+".md")
+		name := filepath.Join(dir, filepath.FromSlash(day.Format(layout))+".md")
 		if _, err := os.Stat(name); err == nil {
 			continue
 		} else if !errors.Is(err, fs.ErrNotExist) {
@@ -152,6 +238,9 @@ func FillJournal(cfg DailyNotesConfig, from, to time.Time, dryRun bool) ([]strin
 		}
 
 		if !dryRun {
+			if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
+				return created, err
+			}
 			f, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 			if err != nil {
 				return created, err

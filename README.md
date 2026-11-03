@@ -95,7 +95,7 @@ Creates the missing journal entries from the template configured in Obsidian's D
 obser journal tidy [--before YYYY-MM-DD] [--dry-run]
 ```
 
-Removes the frontmatter properties that were never filled in (`key:`, `null`, `~`, `""`, `[]` or `{}`) from the journal entries dated before today, or before the day given with `--before`. Only `YYYY-MM-DD.md` notes with `type: journal` are touched. Today's and future entries keep their template prompts, and `type`, `false`, and `0` values are always kept.
+Removes the frontmatter properties that were never filled in (`key:`, `null`, `~`, `""`, `[]` or `{}`) from the journal entries dated before today, or before the day given with `--before`. Only journal entries with `type: journal` are touched. Today's and future entries keep their template prompts, and `type`, `false`, and `0` values are always kept.
 
 This command edits your notes, so keep the vault in git or a sync service, and preview first:
 
@@ -116,7 +116,7 @@ Each changed note is listed with the properties removed from it, followed by a s
 
 Every frontmatter property of a journal entry that is done at least once (a number, a duration like `30 minutes`, or `true`) is a habit. A habit is done on a day when its value is `true`, a number above zero, or any non-empty text; an empty value, `false`, or a missing entry is not done. Rates only count days from the first day a habit was done, up to today.
 
-Journal entries are the `YYYY-MM-DD.md` notes (with or without `type: journal`) directly inside the folder configured in Obsidian's Daily notes plugin, or the vault root when none is set. Durations can combine hours, minutes and seconds, with decimals and short units (`1 hour 30 minutes`, `1.5 hours`, `90 min`, `1h30m`; single-letter units must touch the number, so `500 m` stays meters) and are added up in seconds, and a bare number takes the habit's unit when it only uses one (`journaling: 120` next to `150 words` counts as 120 words); on a habit measured in time, a bare number is minutes (`guitar: 25` counts as 25 minutes). When a habit mixes units, only the most frequent one is added up and a warning is printed.
+Journal entries are the daily notes (with or without `type: journal`) in the folder configured in Obsidian's Daily notes plugin, or the vault root when none is set, named after its date format: `YYYY-MM-DD.md` by default, or for example `2024/2024-01-01.md` with the format `YYYY/YYYY-MM-DD`. Formats can use the `YYYY`, `MM` and `DD` tokens, separated by `-`, `_`, `.`, spaces, or `/` for subfolders. Durations can combine hours, minutes and seconds, with decimals and short units (`1 hour 30 minutes`, `1.5 hours`, `90 min`, `1h30m`; single-letter units must touch the number, so `500 m` stays meters) and are added up in seconds, and a bare number takes the habit's unit when it only uses one (`journaling: 120` next to `150 words` counts as 120 words); on a habit measured in time, a bare number is minutes (`guitar: 25` counts as 25 minutes). When a habit mixes units, only the most frequent one is added up and a warning is printed.
 
 #### Summary
 
